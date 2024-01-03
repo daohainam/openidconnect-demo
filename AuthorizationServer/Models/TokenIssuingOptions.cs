@@ -4,7 +4,6 @@ namespace OIDCDemo.AuthorizationServer.Models
 {
     public class TokenIssuingOptions
     {
-        public string Secret { get; set; } = string.Empty;
         public string Issuer { get; set; } = string.Empty; // this server's Issuer ID, must be an HTTPS URL
         public int IdTokenExpirySeconds { get; set; } = 60 * 20;
         public int AccessTokenExpirySeconds { get; set; } = 60 * 5;
