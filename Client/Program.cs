@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using OIDCDemo.Client;
 using OIDCDemo.Client.Data;
+using OIDCDemo.Client.Helpers;
 
 IdentityModelEventSource.ShowPII = true; // enable detailed logs
 
@@ -28,12 +30,19 @@ builder.Services.AddAuthentication().AddOpenIdConnect(openIdOptions =>
     openIdOptions.GetClaimsFromUserInfoEndpoint = false;
     openIdOptions.CallbackPath = options.CallbackPath;
     openIdOptions.SaveTokens = true;
+    openIdOptions.AccessDeniedPath = options.AccessDeniedPath;
 
     foreach (var scope in options.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
     {
         openIdOptions.Scope.Add(scope);
     }
+
+    openIdOptions.TokenValidationParameters.ValidIssuer = options.Issuer;
+    openIdOptions.TokenValidationParameters.ValidAudience = options.ClientId;
+    openIdOptions.TokenValidationParameters.ValidAlgorithms = new[] { "RS256" };
+    openIdOptions.TokenValidationParameters.IssuerSigningKey = JwkLoader.LoadFromPublic();
 });
+
 
 builder.Services.AddControllersWithViews();
 

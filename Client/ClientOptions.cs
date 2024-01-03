@@ -7,5 +7,6 @@
         public string ClientSecret { get; set; } = string.Empty;
         public string Scope { get; set; } = string.Empty;
         public string CallbackPath { get; set; } = "/signin-oidc";
+        public string AccessDeniedPath { get; set; } = "/access-denied";
     }
 }
