@@ -1,8 +1,9 @@
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
-using Microsoft.IdentityModel.Tokens;
 using OIDCDemo.Client;
 using OIDCDemo.Client.Data;
 using OIDCDemo.Client.Helpers;
@@ -41,9 +42,17 @@ builder.Services.AddAuthentication().AddOpenIdConnect(openIdOptions =>
     openIdOptions.TokenValidationParameters.ValidAudience = options.ClientId;
     openIdOptions.TokenValidationParameters.ValidAlgorithms = new[] { "RS256" };
     openIdOptions.TokenValidationParameters.IssuerSigningKey = JwkLoader.LoadFromPublic();
+
+    openIdOptions.Events.OnTokenResponseReceived = (context) =>
+    {
+        Console.WriteLine($"access_token: {context.TokenEndpointResponse.AccessToken}");
+        Console.WriteLine($"refresh_token: {context.TokenEndpointResponse.RefreshToken}");
+
+        return Task.CompletedTask;
+    };
 });
 
-
+builder.Services.AddHttpClient();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
@@ -61,11 +70,9 @@ else
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthorization();
+app.UseStaticFiles();
 
 app.MapControllerRoute(
     name: "default",

@@ -1,0 +1,11 @@
+@ResourceServer_HostAddress = http://localhost:5226
+
+GET {{ResourceServer_HostAddress}}/weatherforecast/free
+Accept: application/json
+
+###
+
+GET {{ResourceServer_HostAddress}}/weatherforecast/detailed
+Accept: application/json
+
+###

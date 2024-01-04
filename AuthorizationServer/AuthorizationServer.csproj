@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>OIDCDemo.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <AssemblyName>OIDCDemo.$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

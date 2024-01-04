@@ -69,7 +69,8 @@ namespace OIDCDemo.AuthorizationServer.Controllers
                 OriginalRedirectUri = authenticateRequest.RedirectUri,
                 ExpiryTime = DateTime.Now.AddSeconds(CodeResponseValidSeconds),
                 Nonce = authenticateRequest.Nonce,
-                User = user
+                User = user,
+                Scope = authenticateRequest.Scope
             }
             )) 
             {
@@ -115,16 +116,21 @@ namespace OIDCDemo.AuthorizationServer.Controllers
                 return BadRequest();
             }
 
+            codeStorage.TryRemove(code); // code can not be reused
+
             // refresh token can actually be implemented as a JWT or an unique id string
 
             var result = new AuthenticationResponseModel() { 
-                AccessToken = GenerateAccessToken(codeStorageValue.User, client.ClientId, codeStorageValue.Nonce, jsonWebKey),
+                AccessToken = GenerateAccessToken(codeStorageValue.User, codeStorageValue.Scope, client.ClientId, codeStorageValue.Nonce, jsonWebKey),
                 IdToken = GenerateIdToken(codeStorageValue.User, client.ClientId, codeStorageValue.Nonce, jsonWebKey),
                 TokenType = "Bearer",
                 RefreshToken = GenerateRefreshToken(), 
                 ExpiresIn = TokenResponseValidSeconds // valid in 20 minutes
             };
 
+            logger.LogInformation("access_token: {t}", result.AccessToken);
+            logger.LogInformation("refresh_token: {t}", result.RefreshToken);
+            
             return Json(result);
         }
 
@@ -136,7 +142,7 @@ namespace OIDCDemo.AuthorizationServer.Controllers
         private string GenerateIdToken(string userId, string audience, string nonce, JsonWebKey jsonWebKey)
         {
             // https://openid.net/specs/openid-connect-core-1_0.html#IDToken
-
+            // we can return some claims defined here: https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
             var claims = new List<Claim>
             {
                 new(JwtRegisteredClaimNames.Sub, userId)
@@ -155,15 +161,15 @@ namespace OIDCDemo.AuthorizationServer.Controllers
             return idToken;
         }
 
-        private string GenerateAccessToken(string userId, string audience, string nonce, JsonWebKey jsonWebKey)
+        private string GenerateAccessToken(string userId, string scope, string audience, string nonce, JsonWebKey jsonWebKey)
         {
             // access_token can be the same as id_token, but here we might have different values for expirySeconds so we use 2 different functions
 
             var claims = new List<Claim>
             {
-                new(JwtRegisteredClaimNames.Sub, userId)
+                new(JwtRegisteredClaimNames.Sub, userId),
+                new("scope", scope) // Jeg vet ikke hvorfor JwtRegisteredClaimNames inneholder ikke "scope"??? Det har kun OIDC ting?  https://datatracker.ietf.org/doc/html/rfc8693#name-scope-scopes-claim
             };
-
             var idToken = JwtGenerator.GenerateJWTToken(
                 tokenIssuingOptions.AccessTokenExpirySeconds,
                 tokenIssuingOptions.Issuer,

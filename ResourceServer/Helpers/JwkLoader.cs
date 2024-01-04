@@ -1,6 +1,6 @@
 ﻿using Microsoft.IdentityModel.Tokens;
 
-namespace OIDCDemo.Client.Helpers
+namespace OIDCDemo.ResourceServer.Helpers
 {
     public class JwkLoader
     {

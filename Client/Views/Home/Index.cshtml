@@ -4,4 +4,30 @@
 
 <div class="text-center">
     <h1 class="display-4">OpenIDConnect Client Demo</h1>
+    <div class="mt-4">
+        <button id="callUnprotectedResourceButton" class="btn btn-primary" onclick="getFreeWeatherForcast();">Get free weather forcast (unprotected API)</button>
+    </div>
+    <div class="mt-4">
+        <button id="callProtectedResourceButton" class="btn btn-warning" onclick="getDetailedWeatherForcast();">Get detailed weather forcast (protected API)</button>
+    </div>
 </div>
+
+<script type="text/javascript">
+    async function getFreeWeatherForcast() {
+        const response = await fetch('/api/weatherforcast/v1/free');
+        const forcast = await response.text();
+
+        console.log(forcast);
+
+        return false;
+    }
+
+    async function getDetailedWeatherForcast() {
+        const response = await fetch('/api/weatherforcast/v1/detailed');
+        const forcast = await response.text();
+
+        console.log(forcast);
+
+        return false;
+    }
+</script>

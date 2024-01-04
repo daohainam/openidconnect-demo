@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-Client-81e71471-fb50-4b8c-b3f4-9f17c9020a87</UserSecretsId>
     <RootNamespace>OIDCDemo.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <AssemblyName>OIDCDemo.$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
