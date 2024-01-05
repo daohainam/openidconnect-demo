@@ -1,5 +1,5 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Logging;
@@ -20,18 +20,27 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 var options = builder.Configuration.GetSection("OpenIdConnect").Get<ClientOptions>() ?? throw new Exception("Could not get ClientOptions");
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddDefaultIdentity<IdentityUser>(
+    options => options.SignIn.RequireConfirmedAccount = true
+    )
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
-builder.Services.AddAuthentication().AddOpenIdConnect(openIdOptions =>
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+})
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, openIdOptions =>
 {
     openIdOptions.ClientId = options.ClientId;
     openIdOptions.Authority = options.Issuer;
     openIdOptions.ResponseType = OpenIdConnectResponseType.Code;
-    openIdOptions.GetClaimsFromUserInfoEndpoint = false;
     openIdOptions.CallbackPath = options.CallbackPath;
     openIdOptions.SaveTokens = true;
     openIdOptions.AccessDeniedPath = options.AccessDeniedPath;
+
+    openIdOptions.GetClaimsFromUserInfoEndpoint = false; // we will change this to true when we implement user-info endpoint
 
     foreach (var scope in options.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
     {
@@ -42,6 +51,13 @@ builder.Services.AddAuthentication().AddOpenIdConnect(openIdOptions =>
     openIdOptions.TokenValidationParameters.ValidAudience = options.ClientId;
     openIdOptions.TokenValidationParameters.ValidAlgorithms = new[] { "RS256" };
     openIdOptions.TokenValidationParameters.IssuerSigningKey = JwkLoader.LoadFromPublic();
+
+    openIdOptions.Events.OnAuthorizationCodeReceived = (context) =>
+    {
+        Console.WriteLine($"authorization_code: {context.ProtocolMessage.Code}");
+
+        return Task.CompletedTask;
+    };
 
     openIdOptions.Events.OnTokenResponseReceived = (context) =>
     {
@@ -54,6 +70,7 @@ builder.Services.AddAuthentication().AddOpenIdConnect(openIdOptions =>
 
 builder.Services.AddHttpClient();
 builder.Services.AddControllersWithViews();
+
 
 var app = builder.Build();
 
@@ -71,6 +88,7 @@ else
 
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
 app.UseStaticFiles();
 

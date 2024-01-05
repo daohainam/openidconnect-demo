@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using OIDCDemo.Client.Models;
@@ -38,7 +39,7 @@ namespace OIDCDemo.Client.Controllers
             var httpClient = httpClientFactory.CreateClient();
 
             // send access_token 
-            var accessToken = await HttpContext.GetTokenAsync(OpenIdConnectParameterNames.AccessToken);
+            var accessToken = await HttpContext.GetTokenAsync(OpenIdConnectDefaults.AuthenticationScheme, OpenIdConnectParameterNames.AccessToken);
 
             var authFeatures = HttpContext.Features.Get<IAuthenticateResultFeature>();
             var authProps = authFeatures?.AuthenticateResult?.Properties;

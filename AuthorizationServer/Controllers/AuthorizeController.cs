@@ -20,18 +20,21 @@ namespace OIDCDemo.AuthorizationServer.Controllers
         private readonly TokenIssuingOptions tokenIssuingOptions;
         private readonly JsonWebKey jsonWebKey;
         private readonly ICodeStorage codeStorage;
+        private readonly IRefreshTokenStorageFactory refreshTokenStorageFactory;
         private readonly IAuthorizationClientService authorizationClientService;
 
         public AuthorizeController(
             TokenIssuingOptions tokenIssuingOptions,
             JsonWebKey jsonWebKey,
-            ICodeStorage codeStorage, 
+            ICodeStorage codeStorage,
+            IRefreshTokenStorageFactory refreshTokenStorageFactory,
             IAuthorizationClientService authorizationClientService, 
             ILogger<AuthorizeController> logger)
         {
             this.tokenIssuingOptions = tokenIssuingOptions;
             this.jsonWebKey = jsonWebKey;
             this.codeStorage = codeStorage;
+            this.refreshTokenStorageFactory = refreshTokenStorageFactory;
             this.authorizationClientService = authorizationClientService;
             this.logger = logger;
         }
@@ -93,50 +96,103 @@ namespace OIDCDemo.AuthorizationServer.Controllers
 
         [HttpPost("/token")]
         [ResponseCache(NoStore = true)] // https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
-        public IActionResult GetTokenAsync(string grant_type, string code, string redirect_uri)
+        public IActionResult GetTokenAsync(string grant_type, string? code, string? refresh_token, string redirect_uri)
         {
-            if (grant_type != "authorization_code")
+            if (grant_type == "authorization_code")
             {
-                return BadRequest();
-            }
+                if (string.IsNullOrEmpty(code))
+                {
+                    return BadRequest();
+                }
 
-            if (!codeStorage.TryGetToken(code, out var codeStorageValue) || codeStorageValue == null)
+                if (!codeStorage.TryGetToken(code, out var codeStorageValue) || codeStorageValue == null)
+                {
+                    return BadRequest();
+                }
+
+                if (codeStorageValue.OriginalRedirectUri != redirect_uri)
+                {
+                    return BadRequest();
+                }
+
+                var client = authorizationClientService.FindById(codeStorageValue.ClientId);
+                if (client == null)
+                {
+                    return BadRequest();
+                }
+
+                codeStorage.TryRemove(code); // code can not be reused
+
+                // refresh token can actually be implemented as a JWT or an unique id string
+                var refreshToken = GenerateRefreshToken();
+                while (!refreshTokenStorageFactory.GetTokenStorage().TryAddToken(refreshToken)) { // a bit ugly here :|, this can run FOREVER
+                    refreshToken = GenerateRefreshToken();
+                }
+
+                var result = new AuthenticationResponseModel()
+                {
+                    AccessToken = GenerateAccessToken(codeStorageValue.User, codeStorageValue.Scope, client.ClientId, codeStorageValue.Nonce, jsonWebKey),
+                    IdToken = GenerateIdToken(codeStorageValue.User, client.ClientId, codeStorageValue.Nonce, jsonWebKey),
+                    TokenType = "Bearer",
+                    RefreshToken = refreshToken,
+                    ExpiresIn = TokenResponseValidSeconds // valid in 20 minutes
+                };
+
+                logger.LogInformation("access_token: {t}", result.AccessToken);
+                logger.LogInformation("refresh_token: {t}", result.RefreshToken);
+
+                return Json(result);
+            }
+            else if (grant_type == "refresh_token") 
             {
-                return BadRequest();
+                if (string.IsNullOrEmpty(refresh_token))
+                {
+                    return BadRequest();
+                }
+
+                if (refreshTokenStorageFactory.GetInvalidatedTokenStorage().Contains(refresh_token)) // you are requesting with an invalidated refresh_token
+                {
+                    // perhaps your refresh token is leaked out, you should notify and invalidate your access token
+
+                    return BadRequest();
+                }
+
+                if (!refreshTokenStorageFactory.GetTokenStorage().Contains(refresh_token)) // you are requesting with a non-existing refresh_token
+                {
+                    return BadRequest();
+                }
+
+                // everything seems ok, now we create new tokens
+                var refreshToken = GenerateRefreshToken();
+                while (!refreshTokenStorageFactory.GetTokenStorage().TryAddToken(refreshToken))
+                { // a bit ugly here :|, this can run FOREVER
+                    refreshToken = GenerateRefreshToken();
+                }
+
+                refreshTokenStorageFactory.GetInvalidatedTokenStorage().TryAddToken(refresh_token);
+
+                var result = new RefreshResponseModel()
+                {
+                    AccessToken = string.Empty, // TODO: not finished yet! GenerateAccessToken(codeStorageValue.User, codeStorageValue.Scope, client.ClientId, codeStorageValue.Nonce, jsonWebKey),
+                    TokenType = "Bearer",
+                    RefreshToken = refreshToken,
+                    ExpiresIn = TokenResponseValidSeconds // valid in 20 minutes
+                };
+
+                logger.LogInformation("access_token: {t}", result.AccessToken);
+                logger.LogInformation("refresh_token: {t}", result.RefreshToken);
+
+                return Json(result);
             }
-
-            if (codeStorageValue.OriginalRedirectUri != redirect_uri)
-            {
-                return BadRequest();
+            else
+            { 
+                return BadRequest(); 
             }
-
-            var client = authorizationClientService.FindById(codeStorageValue.ClientId);
-            if (client == null)
-            {
-                return BadRequest();
-            }
-
-            codeStorage.TryRemove(code); // code can not be reused
-
-            // refresh token can actually be implemented as a JWT or an unique id string
-
-            var result = new AuthenticationResponseModel() { 
-                AccessToken = GenerateAccessToken(codeStorageValue.User, codeStorageValue.Scope, client.ClientId, codeStorageValue.Nonce, jsonWebKey),
-                IdToken = GenerateIdToken(codeStorageValue.User, client.ClientId, codeStorageValue.Nonce, jsonWebKey),
-                TokenType = "Bearer",
-                RefreshToken = GenerateRefreshToken(), 
-                ExpiresIn = TokenResponseValidSeconds // valid in 20 minutes
-            };
-
-            logger.LogInformation("access_token: {t}", result.AccessToken);
-            logger.LogInformation("refresh_token: {t}", result.RefreshToken);
-            
-            return Json(result);
         }
 
-        private string GenerateRefreshToken()
+        private static string GenerateRefreshToken()
         {
-            return string.Empty;
+            return Guid.NewGuid().ToString("N");
         }
 
         private string GenerateIdToken(string userId, string audience, string nonce, JsonWebKey jsonWebKey)

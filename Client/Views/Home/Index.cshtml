@@ -10,14 +10,21 @@
     <div class="mt-4">
         <button id="callProtectedResourceButton" class="btn btn-warning" onclick="getDetailedWeatherForcast();">Get detailed weather forcast (protected API)</button>
     </div>
+    <div class="mt-4">
+        <textarea id="message" class="form-control" rows="10"></textarea>
+    </div>
 </div>
 
 <script type="text/javascript">
+    function log(text) {
+        document.getElementById("message").value += text + '\n';
+    }
+
     async function getFreeWeatherForcast() {
         const response = await fetch('/api/weatherforcast/v1/free');
         const forcast = await response.text();
 
-        console.log(forcast);
+        log(forcast);
 
         return false;
     }
@@ -26,7 +33,7 @@
         const response = await fetch('/api/weatherforcast/v1/detailed');
         const forcast = await response.text();
 
-        console.log(forcast);
+        log(forcast);
 
         return false;
     }
