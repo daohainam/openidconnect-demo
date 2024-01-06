@@ -98,7 +98,7 @@ namespace OIDCDemo.Client.Areas.Identity.Pages.Account
 
         public async Task<IActionResult> OnGetCallbackAsync(string returnUrl = null, string remoteError = null)
         {
-            returnUrl = returnUrl ?? Url.Content("~/");
+            returnUrl ??= Url.Content("~/");
             if (remoteError != null)
             {
                 ErrorMessage = $"Error from external provider: {remoteError}";
@@ -127,6 +127,7 @@ namespace OIDCDemo.Client.Areas.Identity.Pages.Account
                     }
                 }
 
+                claims.Clear();
                 var access_token = info.AuthenticationTokens.Where(t => t.Name == "access_token").FirstOrDefault();
                 if (access_token != null)
                 {
