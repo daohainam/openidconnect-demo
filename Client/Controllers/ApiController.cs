@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using OIDCDemo.Client.Models;
@@ -11,7 +12,7 @@ namespace OIDCDemo.Client.Controllers
     public class ApiController : Controller
     {
         private readonly IHttpClientFactory httpClientFactory;
-        public ApiController(IHttpClientFactory httpClientFactory) { 
+        public ApiController(UserManager<IdentityUser> userManager,IHttpClientFactory httpClientFactory) { 
             this.httpClientFactory = httpClientFactory;
         }
 
@@ -37,8 +38,8 @@ namespace OIDCDemo.Client.Controllers
         public async Task<IActionResult> GetDetailedWeatherForcastAsync()
         {
             var httpClient = httpClientFactory.CreateClient();
-
             // send access_token 
+            // var accessTokenClaim = 
             var accessToken = await HttpContext.GetTokenAsync(OpenIdConnectDefaults.AuthenticationScheme, OpenIdConnectParameterNames.AccessToken);
 
             var authFeatures = HttpContext.Features.Get<IAuthenticateResultFeature>();

@@ -27,10 +27,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(
 
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
 })
-    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, openIdOptions =>
 {
     openIdOptions.ClientId = options.ClientId;
@@ -61,11 +58,25 @@ builder.Services.AddAuthentication(options =>
 
     openIdOptions.Events.OnTokenResponseReceived = (context) =>
     {
-        Console.WriteLine($"access_token: {context.TokenEndpointResponse.AccessToken}");
-        Console.WriteLine($"refresh_token: {context.TokenEndpointResponse.RefreshToken}");
+        Console.WriteLine($"OnTokenResponseReceived.access_token: {context.TokenEndpointResponse.AccessToken}");
+        Console.WriteLine($"OnTokenResponseReceived.refresh_token: {context.TokenEndpointResponse.RefreshToken}");
 
         return Task.CompletedTask;
     };
+
+    openIdOptions.Events.OnTokenValidated = (context) =>
+    {
+        Console.WriteLine($"OnTokenValidated.access_token: {context.TokenEndpointResponse?.AccessToken}");
+        Console.WriteLine($"OnTokenValidated.refresh_token: {context.TokenEndpointResponse?.RefreshToken}");
+
+        return Task.CompletedTask;
+    };
+
+    openIdOptions.Events.OnTicketReceived = (context) =>
+    {
+        return Task.CompletedTask;
+    };
+
 });
 
 builder.Services.AddHttpClient();
