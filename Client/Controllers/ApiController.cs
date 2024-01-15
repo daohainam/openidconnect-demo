@@ -39,13 +39,11 @@ namespace OIDCDemo.Client.Controllers
         {
             var httpClient = httpClientFactory.CreateClient();
             // send access_token 
-            // var accessTokenClaim = 
-            var accessToken = await HttpContext.GetTokenAsync(OpenIdConnectDefaults.AuthenticationScheme, OpenIdConnectParameterNames.AccessToken);
-
-            var authFeatures = HttpContext.Features.Get<IAuthenticateResultFeature>();
-            var authProps = authFeatures?.AuthenticateResult?.Properties;
-            
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            var accessTokenClaim = User.Claims.Where(c => c.Type == "access_token").FirstOrDefault();
+            if (accessTokenClaim != null)
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessTokenClaim.Value);
+            }
 
             var response = await httpClient.GetAsync("https://localhost:7102/weatherforcast/detailed");
             if (response != null && response.IsSuccessStatusCode)
